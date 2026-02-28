@@ -1,10 +1,8 @@
 # IntelliJ Icarus Plugin
 
 <!-- Plugin description -->
-Icarus is an IntelliJ plugin that interfaces with the Icarus Builder build system.
+A development toolkit, providing integration of Icarus Builder build system into JetBrains' products.
 <!-- Plugin description end -->
-
-It adds the `Icarus` dropdown menu in the menu bar.
 
 
 ## Build

@@ -72,12 +72,17 @@ class IcarusOutputService(
         }
     }
 
-    fun startRun(commandLine: String): OutputSession? {
+    fun startRun(commandLine: String, tabTitleBaseOverride: String? = null): OutputSession? {
         return runOnEdtAndWait {
             val window = resolveToolWindow() ?: return@runOnEdtAndWait null
             val runIndex = runCounter.incrementAndGet()
             val console = TextConsoleBuilderFactory.getInstance().createBuilder(project).console
-            val runTabTitle = contentTitle(commandLine, runIndex)
+            val runTabTitle = if (tabTitleBaseOverride.isNullOrBlank()) {
+                contentTitle(commandLine, runIndex)
+            }
+            else {
+                "$tabTitleBaseOverride #$runIndex"
+            }
             val content = ContentFactory.getInstance().createContent(
                 console.component,
                 runTabTitle,
@@ -96,6 +101,10 @@ class IcarusOutputService(
 
     fun appendStdOut(session: OutputSession, text: String) {
         append(session, text, ConsoleViewContentType.NORMAL_OUTPUT)
+    }
+
+    fun appendUserInput(session: OutputSession, text: String) {
+        append(session, text, ConsoleViewContentType.USER_INPUT)
     }
 
     fun appendProcessChunk(session: OutputSession, text: String, outputType: Key<*>, ansiEscapeDecoder: AnsiEscapeDecoder) {

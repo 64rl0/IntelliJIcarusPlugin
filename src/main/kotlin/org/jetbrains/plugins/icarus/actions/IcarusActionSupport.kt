@@ -54,123 +54,175 @@ internal object IcarusActionSupport {
         return command.joinToString(" ")
     }
 
-    fun runCommandInWidget(project: Project, workspaceRoot: String, command: List<String>): CommandRunResult {
+    fun createRunSession(
+        project: Project,
+        header: String,
+        tabTitleBaseOverride: String? = null,
+    ): IcarusOutputService.OutputSession? {
         saveAllOpenDocuments(project)
 
         val outputService = project.service<IcarusOutputService>()
-        val commandLine = toCommandLine(command)
-        val outputSession = outputService.startRun(commandLine)
-            ?: return CommandRunResult.Error("Icarus output widget is unavailable.")
+        val outputSession = outputService.startRun(header, tabTitleBaseOverride) ?: return null
         setRunningTabTitle(project, outputSession.tabTitle)
         outputService.clearHomeActionStatus()
+        return outputSession
+    }
 
-        try {
-            val workspacePath = try {
-                Path.of(workspaceRoot)
-            }
-            catch (_: InvalidPathException) {
-                val message = "Workspace root is invalid: $workspaceRoot"
+    fun runCommandInWidget(
+        project: Project,
+        workspaceRoot: String,
+        command: List<String>,
+        showStderrInWidget: Boolean = true,
+    ): CommandRunResult {
+        val commandLine = toCommandLine(command)
+        val outputSession = createRunSession(project, commandLine)
+            ?: return CommandRunResult.Error("Icarus output widget is unavailable.")
+
+        return executeCommandInSession(
+            project = project,
+            workspaceRoot = workspaceRoot,
+            command = command,
+            outputSession = outputSession,
+            includeCommandHeader = false,
+            showStderrInWidget = showStderrInWidget,
+        )
+    }
+
+    fun runCommandInSession(
+        project: Project,
+        workspaceRoot: String,
+        command: List<String>,
+        outputSession: IcarusOutputService.OutputSession,
+        includeCommandHeader: Boolean = true,
+        showStderrInWidget: Boolean = true,
+    ): CommandRunResult {
+        return executeCommandInSession(
+            project = project,
+            workspaceRoot = workspaceRoot,
+            command = command,
+            outputSession = outputSession,
+            includeCommandHeader = includeCommandHeader,
+            showStderrInWidget = showStderrInWidget,
+        )
+    }
+
+    private fun executeCommandInSession(
+        project: Project,
+        workspaceRoot: String,
+        command: List<String>,
+        outputSession: IcarusOutputService.OutputSession,
+        includeCommandHeader: Boolean,
+        showStderrInWidget: Boolean,
+    ): CommandRunResult {
+        val outputService = project.service<IcarusOutputService>()
+        val commandLine = toCommandLine(command)
+
+        if (includeCommandHeader) {
+            outputService.appendUserInput(outputSession, "$commandLine\n\n")
+        }
+
+        val workspacePath = try {
+            Path.of(workspaceRoot)
+        }
+        catch (_: InvalidPathException) {
+            val message = "Workspace root is invalid: $workspaceRoot"
+            outputService.appendStdErr(outputSession, "$message\n")
+            return CommandRunResult.Error(message)
+        }
+
+        if (command.isEmpty()) {
+            val message = "Command is empty."
+            outputService.appendStdErr(outputSession, "$message\n")
+            return CommandRunResult.Error(message)
+        }
+
+        val expectedIcarusExecutablePath = IcarusEnvironment.expectedIcarusExecutablePath()
+            ?: run {
+                val message = "Could not resolve HOME directory for Icarus executable path."
                 outputService.appendStdErr(outputSession, "$message\n")
                 return CommandRunResult.Error(message)
             }
 
-            if (command.isEmpty()) {
-                val message = "Command is empty."
+        val icarusExecutablePath = IcarusEnvironment.resolveIcarusExecutablePath()
+            ?: run {
+                val message = "Icarus binary is missing or not executable at $expectedIcarusExecutablePath"
                 outputService.appendStdErr(outputSession, "$message\n")
                 return CommandRunResult.Error(message)
             }
 
-            val expectedIcarusExecutablePath = IcarusEnvironment.expectedIcarusExecutablePath()
-                ?: run {
-                    val message = "Could not resolve HOME directory for Icarus executable path."
-                    outputService.appendStdErr(outputSession, "$message\n")
-                    return CommandRunResult.Error(message)
-                }
+        val commandForExecution = commandWithResolvedIcarusPath(command, icarusExecutablePath)
 
-            val icarusExecutablePath = IcarusEnvironment.resolveIcarusExecutablePath()
-                ?: run {
-                    val message = "Icarus binary is missing or not executable at $expectedIcarusExecutablePath"
-                    outputService.appendStdErr(outputSession, "$message\n")
-                    return CommandRunResult.Error(message)
-                }
+        val process = try {
+            val processBuilder = ProcessBuilder(commandForExecution)
+                .directory(workspacePath.toFile())
+                .redirectErrorStream(false)
+            augmentExecutionPath(processBuilder.environment())
+            processBuilder.start()
+        }
+        catch (exception: IOException) {
+            val message = "Failed to run `$commandLine`: ${exception.message ?: "Unknown error"}"
+            outputService.appendStdErr(outputSession, "$message\n")
+            return CommandRunResult.Error(message)
+        }
 
-            val commandForExecution = commandWithResolvedIcarusPath(command, icarusExecutablePath)
+        val stdout = StringBuilder()
+        val stderr = StringBuilder()
+        val ansiEscapeDecoder = AnsiEscapeDecoder()
 
-            val process = try {
-                val processBuilder = ProcessBuilder(commandForExecution)
-                    .directory(workspacePath.toFile())
-                    .redirectErrorStream(false)
-                augmentExecutionPath(processBuilder.environment())
-                processBuilder.start()
-            }
-            catch (exception: IOException) {
-                val message = "Failed to run `$commandLine`: ${exception.message ?: "Unknown error"}"
-                outputService.appendStdErr(outputSession, "$message\n")
-                return CommandRunResult.Error(message)
-            }
-
-            val stdout = StringBuilder()
-            val stderr = StringBuilder()
-            val ansiEscapeDecoder = AnsiEscapeDecoder()
-
-            val stdoutReader = thread(start = true, isDaemon = true, name = "icarus-widget-stdout") {
-                process.inputStream.bufferedReader().use { reader ->
-                    val buffer = CharArray(STREAM_READ_BUFFER_SIZE)
-                    while (true) {
-                        val count = reader.read(buffer)
-                        if (count < 0) {
-                            break
-                        }
-
-                        val chunk = String(buffer, 0, count)
-                        stdout.append(chunk)
-                        outputService.appendProcessChunk(outputSession, chunk, ProcessOutputTypes.STDOUT, ansiEscapeDecoder)
+        val stdoutReader = thread(start = true, isDaemon = true, name = "icarus-widget-stdout") {
+            process.inputStream.bufferedReader().use { reader ->
+                val buffer = CharArray(STREAM_READ_BUFFER_SIZE)
+                while (true) {
+                    val count = reader.read(buffer)
+                    if (count < 0) {
+                        break
                     }
+
+                    val chunk = String(buffer, 0, count)
+                    stdout.append(chunk)
+                    outputService.appendProcessChunk(outputSession, chunk, ProcessOutputTypes.STDOUT, ansiEscapeDecoder)
                 }
             }
+        }
 
-            val stderrReader = thread(start = true, isDaemon = true, name = "icarus-widget-stderr") {
-                process.errorStream.bufferedReader().use { reader ->
-                    val buffer = CharArray(STREAM_READ_BUFFER_SIZE)
-                    while (true) {
-                        val count = reader.read(buffer)
-                        if (count < 0) {
-                            break
-                        }
+        val stderrReader = thread(start = true, isDaemon = true, name = "icarus-widget-stderr") {
+            process.errorStream.bufferedReader().use { reader ->
+                val buffer = CharArray(STREAM_READ_BUFFER_SIZE)
+                while (true) {
+                    val count = reader.read(buffer)
+                    if (count < 0) {
+                        break
+                    }
 
-                        val chunk = String(buffer, 0, count)
-                        stderr.append(chunk)
+                    val chunk = String(buffer, 0, count)
+                    stderr.append(chunk)
+                    if (showStderrInWidget) {
                         outputService.appendProcessChunk(outputSession, chunk, ProcessOutputTypes.STDERR, ansiEscapeDecoder)
                     }
                 }
             }
-
-            val exitCode = try {
-                process.waitFor()
-            }
-            catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
-                process.destroyForcibly()
-                val message = "Command was interrupted: $commandLine"
-                outputService.appendStdErr(outputSession, "$message\n")
-                return CommandRunResult.Error(message)
-            }
-
-            stdoutReader.join()
-            stderrReader.join()
-
-            outputService.appendSystem(outputSession, "\n[exit code $exitCode]\n")
-
-            return CommandRunResult.Success(
-                commandLine = commandLine,
-                stdout = stdout.toString(),
-                stderr = stderr.toString(),
-                exitCode = exitCode,
-            )
         }
-        finally {
-            outputService.clearHomeActionStatus()
+
+        val exitCode = try {
+            process.waitFor()
         }
+        catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            process.destroyForcibly()
+            val message = "Command was interrupted: $commandLine"
+            outputService.appendStdErr(outputSession, "$message\n")
+            return CommandRunResult.Error(message)
+        }
+
+        stdoutReader.join()
+        stderrReader.join()
+
+        return CommandRunResult.Success(
+            commandLine = commandLine,
+            stdout = stdout.toString(),
+            stderr = stderr.toString(),
+            exitCode = exitCode,
+        )
     }
 
     fun commandFailureMessage(result: CommandRunResult.Success): String? {
