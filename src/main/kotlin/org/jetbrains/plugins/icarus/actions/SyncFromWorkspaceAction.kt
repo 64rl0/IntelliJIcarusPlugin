@@ -34,7 +34,8 @@ import java.util.Locale
 class SyncFromWorkspaceAction : AnAction() {
 
     override fun update(event: AnActionEvent) {
-        event.presentation.isEnabled = event.project != null
+        val project = event.project
+        event.presentation.isEnabled = project != null && IcarusActionSupport.resolveDetectedWorkspaceRoot(project) != null
     }
 
     override fun actionPerformed(event: AnActionEvent) {
@@ -45,10 +46,11 @@ class SyncFromWorkspaceAction : AnAction() {
             return
         }
 
-        val workspaceRoot = IcarusActionSupport.resolveWorkspaceRoot(project)
+        val workspaceRoot = IcarusActionSupport.resolveDetectedWorkspaceRoot(project)
+            ?.toString()
             ?: run {
                 IcarusActionSupport.finishCommand(project)
-                IcarusActionSupport.notify(project, NotificationType.ERROR, "Could not determine workspace root for this project.")
+                IcarusActionSupport.notify(project, NotificationType.ERROR, "Workspace not found.")
                 return
             }
 
@@ -65,7 +67,7 @@ class SyncFromWorkspaceAction : AnAction() {
             override fun onSuccess() {
                 when (val result = syncResult) {
                     is SyncExecutionResult.Error -> {
-                        IcarusActionSupport.notify(project, NotificationType.ERROR, result.message)
+                        Unit
                     }
 
                     is SyncExecutionResult.Success -> {
@@ -123,22 +125,22 @@ class SyncFromWorkspaceAction : AnAction() {
             pathKey = "devrun_excluderoot.pythonhome",
         ) ?: return SyncExecutionResult.Error("Step 3 failed.")
 
-        val resolvedWorkspaceRoot = resolveStepValue(
+        val pythonPath = resolveStepValue(
             project = project,
             workspaceRoot = workspaceRoot,
             outputService = outputService,
             outputSession = outputSession,
             stepNumber = 4,
-            pathKey = "workspace.root",
+            pathKey = "devrun_excluderoot.pythonpath",
         ) ?: return SyncExecutionResult.Error("Step 4 failed.")
 
-        val workspaceBuildRoot = resolveStepValue(
+        val resolvedWorkspaceRoot = resolveStepValue(
             project = project,
             workspaceRoot = workspaceRoot,
             outputService = outputService,
             outputSession = outputSession,
             stepNumber = 5,
-            pathKey = "workspace.build-root",
+            pathKey = "workspace.root",
         ) ?: return SyncExecutionResult.Error("Step 5 failed.")
 
         val workspaceSrcRoot = resolveStepValue(
@@ -150,9 +152,18 @@ class SyncFromWorkspaceAction : AnAction() {
             pathKey = "workspace.src-root",
         ) ?: return SyncExecutionResult.Error("Step 6 failed.")
 
+        val workspaceBuildRoot = resolveStepValue(
+            project = project,
+            workspaceRoot = workspaceRoot,
+            outputService = outputService,
+            outputSession = outputSession,
+            stepNumber = 7,
+            pathKey = "workspace.build-root",
+        ) ?: return SyncExecutionResult.Error("Step 7 failed.")
+
         outputService.appendSystem(
             outputSession,
-            "Step 7: Configure IDE Workspace\n",
+            "Step 8: Configure IDE Workspace\n",
         )
 
         val rootsResult = runOnEdtAndWait {
@@ -166,7 +177,7 @@ class SyncFromWorkspaceAction : AnAction() {
 
         when (rootsResult) {
             is RootsConfigurationResult.Error -> {
-                outputService.appendStdErr(outputSession, "Step 7 failed: ${rootsResult.message}\n")
+                outputService.appendStdErr(outputSession, "Step 8 failed: ${rootsResult.message}\n")
                 return SyncExecutionResult.Error(rootsResult.message)
             }
 
@@ -184,17 +195,16 @@ class SyncFromWorkspaceAction : AnAction() {
 
         outputService.appendSystem(
             outputSession,
-            "Step 8: Configure IDE Python SDK\n",
+            "Step 9: Configure IDE Python SDK\n",
         )
 
         val pythonVersionInfo = resolvePythonVersionsFromPythonHome(pythonHomePath)
-            ?: return SyncExecutionResult.Error("Step 8 failed: Could not resolve Python versions from Step 3 path basename.")
+            ?: return SyncExecutionResult.Error("Step 9 failed: Could not resolve Python versions from Step 3 path basename.")
 
-        val interpreterPath = buildInterpreterPath(pythonHomePath, pythonVersionInfo.pyVersion)
-            ?: return SyncExecutionResult.Error("Step 8 failed: Invalid python home path from Step 3.")
+        val interpreterPath = buildInterpreterPath(pythonHomePath)
+            ?: return SyncExecutionResult.Error("Step 9 failed: Invalid python home path from Step 3.")
 
-        val interpreterLibPath = buildInterpreterLibPath(pythonHomePath, pythonVersionInfo.pyVersion)
-            ?: return SyncExecutionResult.Error("Step 8 failed: Invalid interpreter lib path from Step 3.")
+        val interpreterLibPath = pythonPath
 
         val sdkName = "Py${pythonVersionInfo.pyFullVersion} ($packageNamePascal)"
         val sdkResult = runOnEdtAndWait {
@@ -202,7 +212,7 @@ class SyncFromWorkspaceAction : AnAction() {
         }
         when (sdkResult) {
             is SdkConfigurationResult.Error -> {
-                outputService.appendStdErr(outputSession, "Step 8 failed: ${sdkResult.message}\n")
+                outputService.appendStdErr(outputSession, "Step 9 failed: ${sdkResult.message}\n")
                 return SyncExecutionResult.Error(sdkResult.message)
             }
 
@@ -256,7 +266,7 @@ class SyncFromWorkspaceAction : AnAction() {
                     return null
                 }
 
-                val resolvedValue = extractFirstToken(commandResult.stdout)
+                val resolvedValue = extractResolvedPathValue(commandResult.stdout, pathKey)
                 if (resolvedValue == null) {
                     outputService.appendStdErr(outputSession, "Step $stepNumber failed: No value returned for $pathKey\n")
                     outputService.appendSystem(outputSession, "\n")
@@ -564,15 +574,10 @@ class SyncFromWorkspaceAction : AnAction() {
         }
     }
 
-    private fun buildInterpreterPath(pythonHomePath: String, pyVersion: String): String? {
+    private fun buildInterpreterPath(pythonHomePath: String): String? {
         val pythonHome = safePath(pythonHomePath) ?: return null
-        val interpreterPath = pythonHome.resolve("bin").resolve("python$pyVersion")
+        val interpreterPath = pythonHome.resolve("bin").resolve("python3")
         return interpreterPath.toString()
-    }
-
-    private fun buildInterpreterLibPath(pythonHomePath: String, pyVersion: String): String? {
-        val pythonHome = safePath(pythonHomePath) ?: return null
-        return pythonHome.resolve("lib").resolve("python$pyVersion").resolve("site-packages").toString()
     }
 
     private fun buildWorkspaceConfigurationOutput(
@@ -616,11 +621,27 @@ class SyncFromWorkspaceAction : AnAction() {
         return PythonVersionInfo(pyVersion = pyVersion, pyFullVersion = pyFullVersion)
     }
 
-    private fun extractFirstToken(stdout: String): String? {
+    private fun extractResolvedPathValue(stdout: String, pathKey: String): String? {
+        return if (COLON_DELIMITED_PATH_KEYS.contains(pathKey)) {
+            extractFirstColonDelimitedToken(stdout)
+        }
+        else {
+            extractFirstLineToken(stdout)
+        }
+    }
+
+    private fun extractFirstColonDelimitedToken(stdout: String): String? {
         return stdout
             .lineSequence()
             .flatMap { line -> line.split(':').asSequence() }
             .map { token -> token.trim() }
+            .firstOrNull { token -> token.isNotEmpty() }
+    }
+
+    private fun extractFirstLineToken(stdout: String): String? {
+        return stdout
+            .lineSequence()
+            .map { line -> line.trim() }
             .firstOrNull { token -> token.isNotEmpty() }
     }
 
@@ -677,5 +698,9 @@ class SyncFromWorkspaceAction : AnAction() {
         private const val PYTHON_SDK_CORE_TOOLS_CLASS = "com.jetbrains.python.sdk.PySdkCoreToolsKt"
         private const val SYNC_RUN_HEADER = "sync from workspace"
         private const val SYNC_TAB_TITLE = "SyncWs"
+        private val COLON_DELIMITED_PATH_KEYS = setOf(
+            "devrun_excluderoot.pythonhome",
+            "devrun_excluderoot.pythonpath",
+        )
     }
 }
