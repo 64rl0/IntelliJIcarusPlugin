@@ -33,6 +33,12 @@
             description="Run icarus builder merge"
         />
         <action
+            id="Icarus.WorkspaceDashboard"
+            class="org.jetbrains.plugins.icarus.actions.WorkspaceDashboardAction"
+            text="Workspace Dashboard"
+            description="Open workspace dashboard report"
+        />
+        <action
             id="Icarus.Builder.Release"
             class="org.jetbrains.plugins.icarus.actions.IcarusBuilderReleaseAction"
             text="Release"

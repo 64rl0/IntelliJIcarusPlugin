@@ -12,7 +12,10 @@ sealed class IcarusBuilderCommandAction(
 
     override fun update(event: AnActionEvent) {
         val project = event.project
-        event.presentation.isEnabled = project != null && !IcarusActionSupport.isCommandRunning(project)
+        event.presentation.isEnabled =
+            project != null &&
+            !IcarusActionSupport.isCommandRunning(project) &&
+            IcarusActionSupport.resolveDetectedWorkspaceRoot(project) != null
     }
 
     override fun actionPerformed(event: AnActionEvent) {
@@ -23,10 +26,11 @@ sealed class IcarusBuilderCommandAction(
             return
         }
 
-        val workspaceRoot = IcarusActionSupport.resolveWorkspaceRoot(project)
+        val workspaceRoot = IcarusActionSupport.resolveDetectedWorkspaceRoot(project)
+            ?.toString()
             ?: run {
                 IcarusActionSupport.finishCommand(project)
-                IcarusActionSupport.notify(project, NotificationType.ERROR, "Could not determine workspace root for this project.")
+                IcarusActionSupport.notify(project, NotificationType.ERROR, "Workspace not found.")
                 return
             }
 
@@ -45,14 +49,11 @@ sealed class IcarusBuilderCommandAction(
             override fun onSuccess() {
                 when (val result = commandRunResult) {
                     is IcarusActionSupport.CommandRunResult.Error -> {
-                        IcarusActionSupport.notify(project, NotificationType.ERROR, result.message)
+                        Unit
                     }
 
                     is IcarusActionSupport.CommandRunResult.Success -> {
-                        val failureMessage = IcarusActionSupport.commandFailureMessage(result)
-                        if (failureMessage != null) {
-                            IcarusActionSupport.notify(project, NotificationType.ERROR, failureMessage)
-                        }
+                        Unit
                     }
                 }
             }

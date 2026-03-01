@@ -13,11 +13,11 @@ import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.roots.ProjectRootManager
 import org.jetbrains.plugins.icarus.IcarusEnvironment
 import org.jetbrains.plugins.icarus.toolwindow.IcarusOutputService
-import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 internal object IcarusActionSupport {
@@ -44,6 +44,19 @@ internal object IcarusActionSupport {
             .asSequence()
             .map { it.path }
             .firstOrNull(::isExistingDirectory)
+    }
+
+    fun resolveDetectedWorkspaceRoot(project: Project): Path? {
+        val workspaceRoot = resolveWorkspaceRoot(project) ?: return null
+        val rootPath = try {
+            Path.of(workspaceRoot)
+        }
+        catch (_: InvalidPathException) {
+            return null
+        }
+
+        val workspaceConfigPath = rootPath.resolve(WORKSPACE_CONFIG_FILE_NAME)
+        return if (Files.isRegularFile(workspaceConfigPath)) rootPath else null
     }
 
     fun buildIcarusBuilderCommand(arguments: List<String>): List<String> {
@@ -156,7 +169,7 @@ internal object IcarusActionSupport {
             val processBuilder = ProcessBuilder(commandForExecution)
                 .directory(workspacePath.toFile())
                 .redirectErrorStream(false)
-            augmentExecutionPath(processBuilder.environment())
+            augmentExecutionPath(processBuilder.environment(), workspacePath)
             processBuilder.start()
         }
         catch (exception: IOException) {
@@ -311,60 +324,76 @@ internal object IcarusActionSupport {
         }
     }
 
-    private fun augmentExecutionPath(environment: MutableMap<String, String>) {
-        val currentEntries = environment[PATH_ENVIRONMENT_VARIABLE]
-            ?.split(File.pathSeparator)
-            ?.filter { it.isNotBlank() }
-            ?: emptyList()
-
-        val preferredEntries = preferredPathEntries()
-            .filter { entry ->
-                try {
-                    Files.isDirectory(Path.of(entry))
-                }
-                catch (_: InvalidPathException) {
-                    false
-                }
-            }
-
-        val mergedEntries = linkedSetOf<String>()
-        preferredEntries.forEach(mergedEntries::add)
-        currentEntries.forEach(mergedEntries::add)
-
-        environment[PATH_ENVIRONMENT_VARIABLE] = mergedEntries.joinToString(File.pathSeparator)
+    private fun augmentExecutionPath(environment: MutableMap<String, String>, workspacePath: Path) {
+        val interactiveShellPath = resolveInteractiveShellPath(environment, workspacePath) ?: return
+        environment[PATH_ENVIRONMENT_VARIABLE] = interactiveShellPath
     }
 
-    private fun preferredPathEntries(): List<String> {
-        val homeDirectory = IcarusEnvironment.homeDirectory()
-        val userEntries = if (homeDirectory.isNullOrBlank()) {
-            emptyList()
+    private fun resolveInteractiveShellPath(environment: Map<String, String>, workspacePath: Path): String? {
+        val shellExecutable = environment[SHELL_ENVIRONMENT_VARIABLE]
+            ?.takeIf { it.isNotBlank() }
+            ?: System.getenv(SHELL_ENVIRONMENT_VARIABLE)?.takeIf { it.isNotBlank() }
+            ?: DEFAULT_LOGIN_SHELL
+
+        val process = try {
+            ProcessBuilder(shellExecutable, "-ilc", INTERACTIVE_PATH_PROBE_COMMAND)
+                .directory(workspacePath.toFile())
+                .redirectErrorStream(false)
+                .start()
         }
-        else {
-            listOf(
-                "$homeDirectory/.local/bin",
-                "$homeDirectory/.local/sbin",
-                "$homeDirectory/bin",
-                "$homeDirectory/sbin",
-            )
+        catch (_: Exception) {
+            return null
         }
 
-        return userEntries + listOf(
-            "/opt/homebrew/bin",
-            "/opt/homebrew/sbin",
-            "/home/linuxbrew/.linuxbrew/bin",
-            "/home/linuxbrew/.linuxbrew/sbin",
-            "/usr/local/bin",
-            "/usr/local/sbin",
-            "/usr/bin",
-            "/usr/sbin",
-            "/bin",
-            "/sbin",
-        )
+        val stdout = process.inputStream.bufferedReader().use { it.readText() }
+        process.errorStream.bufferedReader().use { it.readText() }
+
+        val completed = try {
+            process.waitFor(SHELL_PATH_PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        }
+        catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            false
+        }
+
+        if (!completed) {
+            process.destroyForcibly()
+            return null
+        }
+
+        if (process.exitValue() != 0) {
+            return null
+        }
+
+        return extractInteractiveShellPath(stdout)
+    }
+
+    private fun extractInteractiveShellPath(stdout: String): String? {
+        val startIndex = stdout.indexOf(INTERACTIVE_PATH_PROBE_PREFIX)
+        if (startIndex < 0) {
+            return null
+        }
+
+        val valueStart = startIndex + INTERACTIVE_PATH_PROBE_PREFIX.length
+        val endIndex = stdout.indexOf(INTERACTIVE_PATH_PROBE_SUFFIX, valueStart)
+        if (endIndex < 0 || endIndex <= valueStart) {
+            return null
+        }
+
+        val pathValue = stdout.substring(valueStart, endIndex).trim()
+        return pathValue.takeIf { it.isNotEmpty() }
     }
 
     private const val ICARUS_EXECUTABLE_NAME = "icarus"
     private const val STREAM_READ_BUFFER_SIZE = 4096
     private const val PATH_ENVIRONMENT_VARIABLE = "PATH"
+    private const val SHELL_ENVIRONMENT_VARIABLE = "SHELL"
     private const val COMMAND_ALREADY_RUNNING_MESSAGE = "An instance of Icarus Builder is already running."
+    private const val WORKSPACE_CONFIG_FILE_NAME = "icarus.cfg"
+    private const val DEFAULT_LOGIN_SHELL = "/bin/zsh"
+    private const val SHELL_PATH_PROBE_TIMEOUT_SECONDS = 3L
+    private const val INTERACTIVE_PATH_PROBE_PREFIX = "__ICARUS_PATH_START__"
+    private const val INTERACTIVE_PATH_PROBE_SUFFIX = "__ICARUS_PATH_END__"
+    private const val INTERACTIVE_PATH_PROBE_COMMAND = "printf '__ICARUS_PATH_START__%s__ICARUS_PATH_END__' \"\$PATH\""
     private val ANSI_ESCAPE_SEQUENCE_REGEX = Regex("\\u001B\\[[;\\d]*m")
 }

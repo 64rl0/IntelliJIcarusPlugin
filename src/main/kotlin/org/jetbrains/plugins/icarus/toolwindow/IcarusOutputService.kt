@@ -25,9 +25,6 @@ import org.jetbrains.plugins.icarus.IcarusBundle
 import org.jetbrains.plugins.icarus.IcarusEnvironment
 import java.awt.BorderLayout
 import java.awt.Font
-import java.nio.file.Files
-import java.nio.file.InvalidPathException
-import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 import javax.swing.Box
 import javax.swing.BoxLayout
@@ -61,6 +58,12 @@ class IcarusOutputService(
     @Volatile
     private var workspaceStatusTextLabel: JLabel? = null
 
+    @Volatile
+    private var homeActionButtons: List<JButton> = emptyList()
+
+    @Volatile
+    private var workspaceDetected: Boolean = false
+
     private val runCounter = AtomicInteger(0)
     private val refreshHomeContentAction = RefreshHomeContentAction()
 
@@ -83,6 +86,7 @@ class IcarusOutputService(
             else {
                 "$tabTitleBaseOverride #$runIndex"
             }
+
             val content = ContentFactory.getInstance().createContent(
                 console.component,
                 runTabTitle,
@@ -167,6 +171,7 @@ class IcarusOutputService(
             homeActionStatusLabel = existingHomeContent.getUserData(HOME_ACTION_STATUS_LABEL_KEY)
             workspaceStatusIconLabel = existingHomeContent.getUserData(WORKSPACE_STATUS_ICON_LABEL_KEY)
             workspaceStatusTextLabel = existingHomeContent.getUserData(WORKSPACE_STATUS_TEXT_LABEL_KEY)
+            homeActionButtons = existingHomeContent.getUserData(HOME_ACTION_BUTTONS_KEY).orEmpty()
             return
         }
 
@@ -207,7 +212,7 @@ class IcarusOutputService(
         homeContentPanel.add(actionStatusLabel)
         homeContentPanel.add(Box.createVerticalStrut(14))
 
-        homeContentPanel.add(sectionLabel(IcarusBundle.message("icarus.widget.section.workspace")))
+        homeContentPanel.add(sectionLabel(IcarusBundle.message("icarus.widget.section.icarusWorkspace")))
         homeContentPanel.add(Box.createVerticalStrut(6))
 
         val workspaceStatusIcon = JLabel(AllIcons.RunConfigurations.TestError).apply {
@@ -226,18 +231,42 @@ class IcarusOutputService(
             add(workspaceStatusText)
         }
         homeContentPanel.add(workspaceStatusPanel)
+        homeContentPanel.add(Box.createVerticalStrut(24))
+
+        homeContentPanel.add(sectionLabel(IcarusBundle.message("icarus.widget.section.workspace")))
         homeContentPanel.add(Box.createVerticalStrut(6))
 
         val workspaceActionsRow = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.X_AXIS)
             isOpaque = false
             alignmentX = 0.0f
-            add(actionButton(IcarusBundle.message("icarus.action.syncFromWorkspace"), ACTION_SYNC_FROM_WORKSPACE_ID))
+            val workspaceDashboardButton = actionButton(
+                IcarusBundle.message("icarus.action.workspaceDashboard"),
+                ACTION_WORKSPACE_DASHBOARD_ID,
+            )
+            val syncFromWorkspaceButton = actionButton(
+                IcarusBundle.message("icarus.action.syncFromWorkspace"),
+                ACTION_SYNC_FROM_WORKSPACE_ID,
+            )
+            val mergeUserSpaceButton = actionButton(
+                IcarusBundle.message("icarus.action.mergeUserSpace"),
+                ACTION_MERGE_USERSPACE_ID,
+            )
+
+            add(workspaceDashboardButton)
             add(Box.createHorizontalStrut(8))
-            add(actionButton(IcarusBundle.message("icarus.action.mergeUserSpace"), ACTION_MERGE_USERSPACE_ID))
+            add(syncFromWorkspaceButton)
+            add(Box.createHorizontalStrut(8))
+            add(mergeUserSpaceButton)
+
+            homeActionButtons = listOf(
+                workspaceDashboardButton,
+                syncFromWorkspaceButton,
+                mergeUserSpaceButton,
+            )
         }
         homeContentPanel.add(workspaceActionsRow)
-        homeContentPanel.add(Box.createVerticalStrut(14))
+        homeContentPanel.add(Box.createVerticalStrut(24))
 
         homeContentPanel.add(sectionLabel(IcarusBundle.message("icarus.widget.section.builder")))
         homeContentPanel.add(Box.createVerticalStrut(6))
@@ -246,17 +275,33 @@ class IcarusOutputService(
             layout = BoxLayout(this, BoxLayout.X_AXIS)
             isOpaque = false
             alignmentX = 0.0f
-            add(actionButton(IcarusBundle.message("icarus.builder.action.release"), ACTION_BUILDER_RELEASE_ID))
+            val releaseButton = actionButton(IcarusBundle.message("icarus.builder.action.release"), ACTION_BUILDER_RELEASE_ID)
+            val buildButton = actionButton(IcarusBundle.message("icarus.builder.action.build"), ACTION_BUILDER_BUILD_ID)
+            val formatButton = actionButton(IcarusBundle.message("icarus.builder.action.format"), ACTION_BUILDER_FORMAT_ID)
+            val testButton = actionButton(IcarusBundle.message("icarus.builder.action.test"), ACTION_BUILDER_TEST_ID)
+            val docsButton = actionButton(IcarusBundle.message("icarus.builder.action.docs"), ACTION_BUILDER_DOCS_ID)
+            val cleanButton = actionButton(IcarusBundle.message("icarus.builder.action.clean"), ACTION_BUILDER_CLEAN_ID)
+
+            add(releaseButton)
             add(Box.createHorizontalStrut(8))
-            add(actionButton(IcarusBundle.message("icarus.builder.action.build"), ACTION_BUILDER_BUILD_ID))
+            add(buildButton)
             add(Box.createHorizontalStrut(8))
-            add(actionButton(IcarusBundle.message("icarus.builder.action.format"), ACTION_BUILDER_FORMAT_ID))
+            add(formatButton)
             add(Box.createHorizontalStrut(8))
-            add(actionButton(IcarusBundle.message("icarus.builder.action.test"), ACTION_BUILDER_TEST_ID))
+            add(testButton)
             add(Box.createHorizontalStrut(8))
-            add(actionButton(IcarusBundle.message("icarus.builder.action.docs"), ACTION_BUILDER_DOCS_ID))
+            add(docsButton)
             add(Box.createHorizontalStrut(8))
-            add(actionButton(IcarusBundle.message("icarus.builder.action.clean"), ACTION_BUILDER_CLEAN_ID))
+            add(cleanButton)
+
+            homeActionButtons = homeActionButtons + listOf(
+                releaseButton,
+                buildButton,
+                formatButton,
+                testButton,
+                docsButton,
+                cleanButton,
+            )
         }
         homeContentPanel.add(builderActionsRow)
 
@@ -273,6 +318,7 @@ class IcarusOutputService(
         homeContent.putUserData(HOME_ACTION_STATUS_LABEL_KEY, actionStatusLabel)
         homeContent.putUserData(WORKSPACE_STATUS_ICON_LABEL_KEY, workspaceStatusIcon)
         homeContent.putUserData(WORKSPACE_STATUS_TEXT_LABEL_KEY, workspaceStatusText)
+        homeContent.putUserData(HOME_ACTION_BUTTONS_KEY, homeActionButtons)
         contentManager.addContent(homeContent)
 
         this.homeStatusLabel = statusLabel
@@ -301,6 +347,12 @@ class IcarusOutputService(
             if (wasVisible) {
                 focusHomeContent()
             }
+        }
+    }
+
+    fun focusHome() {
+        runOnEdtAndWait {
+            focusHomeContent()
         }
     }
 
@@ -364,33 +416,25 @@ class IcarusOutputService(
                 statusLabel.isVisible = true
             }
 
-            val workspaceRoot = IcarusActionSupport.resolveWorkspaceRoot(project)
-            val workspaceConfigPath = workspaceRoot
-                ?.let { root ->
-                    try {
-                        Path.of(root, WORKSPACE_CONFIG_FILE_NAME)
-                    }
-                    catch (_: InvalidPathException) {
-                        null
-                    }
-                }
+            val workspaceRoot = IcarusActionSupport.resolveDetectedWorkspaceRoot(project)
 
-            if (workspaceConfigPath != null && Files.isRegularFile(workspaceConfigPath)) {
+            if (workspaceRoot != null) {
                 workspaceIconLabel.icon = AllIcons.RunConfigurations.TestPassed
                 workspaceTextLabel.foreground = JBColor(
                     java.awt.Color(0x1A7F37),
                     java.awt.Color(0x59D185),
                 )
-                val workspacePath = workspaceConfigPath.parent?.toString() ?: workspaceConfigPath.toString()
                 workspaceTextLabel.text = IcarusBundle.message(
                     "icarus.widget.workspace.detected",
-                    workspacePath,
+                    workspaceRoot.toString(),
                 )
+                workspaceDetected = true
             }
             else {
                 workspaceIconLabel.icon = AllIcons.RunConfigurations.TestError
                 workspaceTextLabel.foreground = JBColor.RED
                 workspaceTextLabel.text = IcarusBundle.message("icarus.widget.workspace.notDetected")
+                workspaceDetected = false
             }
         }
     }
@@ -408,6 +452,10 @@ class IcarusOutputService(
             isDefaultCapable = false
 
             addActionListener {
+                if (!workspaceDetected) {
+                    return@addActionListener
+                }
+
                 if (IcarusActionSupport.isCommandRunning(project)) {
                     IcarusActionSupport.notifyCommandAlreadyRunning(project)
                     return@addActionListener
@@ -481,10 +529,11 @@ class IcarusOutputService(
         private val HOME_ACTION_STATUS_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.home.action.status")
         private val WORKSPACE_STATUS_ICON_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.workspace.icon")
         private val WORKSPACE_STATUS_TEXT_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.workspace.text")
+        private val HOME_ACTION_BUTTONS_KEY = Key.create<List<JButton>>("icarus.toolwindow.home.buttons")
         private const val HOME_TAB_TITLE = "Home"
-        private const val WORKSPACE_CONFIG_FILE_NAME = "icarus.cfg"
         private const val ACTION_SYNC_FROM_WORKSPACE_ID = "Icarus.SyncFromWorkspace"
         private const val ACTION_MERGE_USERSPACE_ID = "Icarus.Builder.MergeUserSpace"
+        private const val ACTION_WORKSPACE_DASHBOARD_ID = "Icarus.WorkspaceDashboard"
         private const val ACTION_BUILDER_RELEASE_ID = "Icarus.Builder.Release"
         private const val ACTION_BUILDER_BUILD_ID = "Icarus.Builder.Build"
         private const val ACTION_BUILDER_FORMAT_ID = "Icarus.Builder.Format"
