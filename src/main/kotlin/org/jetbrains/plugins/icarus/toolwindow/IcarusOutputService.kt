@@ -59,6 +59,12 @@ class IcarusOutputService(
     private var workspaceStatusTextLabel: JLabel? = null
 
     @Volatile
+    private var packageStatusLabel: JLabel? = null
+
+    @Volatile
+    private var workspacePathLabel: JLabel? = null
+
+    @Volatile
     private var homeActionButtons: List<JButton> = emptyList()
 
     @Volatile
@@ -171,6 +177,8 @@ class IcarusOutputService(
             homeActionStatusLabel = existingHomeContent.getUserData(HOME_ACTION_STATUS_LABEL_KEY)
             workspaceStatusIconLabel = existingHomeContent.getUserData(WORKSPACE_STATUS_ICON_LABEL_KEY)
             workspaceStatusTextLabel = existingHomeContent.getUserData(WORKSPACE_STATUS_TEXT_LABEL_KEY)
+            packageStatusLabel = existingHomeContent.getUserData(PACKAGE_STATUS_LABEL_KEY)
+            workspacePathLabel = existingHomeContent.getUserData(WORKSPACE_PATH_LABEL_KEY)
             homeActionButtons = existingHomeContent.getUserData(HOME_ACTION_BUTTONS_KEY).orEmpty()
             return
         }
@@ -231,6 +239,21 @@ class IcarusOutputService(
             add(workspaceStatusText)
         }
         homeContentPanel.add(workspaceStatusPanel)
+
+        val packageLabel = JLabel().apply {
+            alignmentX = 0.0f
+            border = JBUI.Borders.emptyTop(4)
+            isVisible = false
+        }
+        homeContentPanel.add(packageLabel)
+
+        val wsPathLabel = JLabel().apply {
+            alignmentX = 0.0f
+            border = JBUI.Borders.emptyTop(4)
+            isVisible = false
+        }
+        homeContentPanel.add(wsPathLabel)
+
         homeContentPanel.add(Box.createVerticalStrut(24))
 
         homeContentPanel.add(sectionLabel(IcarusBundle.message("icarus.widget.section.workspace")))
@@ -318,6 +341,8 @@ class IcarusOutputService(
         homeContent.putUserData(HOME_ACTION_STATUS_LABEL_KEY, actionStatusLabel)
         homeContent.putUserData(WORKSPACE_STATUS_ICON_LABEL_KEY, workspaceStatusIcon)
         homeContent.putUserData(WORKSPACE_STATUS_TEXT_LABEL_KEY, workspaceStatusText)
+        homeContent.putUserData(PACKAGE_STATUS_LABEL_KEY, packageLabel)
+        homeContent.putUserData(WORKSPACE_PATH_LABEL_KEY, wsPathLabel)
         homeContent.putUserData(HOME_ACTION_BUTTONS_KEY, homeActionButtons)
         contentManager.addContent(homeContent)
 
@@ -325,6 +350,8 @@ class IcarusOutputService(
         this.homeActionStatusLabel = actionStatusLabel
         this.workspaceStatusIconLabel = workspaceStatusIcon
         this.workspaceStatusTextLabel = workspaceStatusText
+        this.packageStatusLabel = packageLabel
+        this.workspacePathLabel = wsPathLabel
         refreshHomeContent()
     }
 
@@ -417,6 +444,8 @@ class IcarusOutputService(
             }
 
             val workspaceRoot = IcarusActionSupport.resolveDetectedWorkspaceRoot(project)
+            val pkgLabel = packageStatusLabel
+            val pathLabel = workspacePathLabel
 
             if (workspaceRoot != null) {
                 workspaceIconLabel.icon = AllIcons.RunConfigurations.TestPassed
@@ -424,16 +453,35 @@ class IcarusOutputService(
                     java.awt.Color(0x1A7F37),
                     java.awt.Color(0x59D185),
                 )
-                workspaceTextLabel.text = IcarusBundle.message(
-                    "icarus.widget.workspace.detected",
-                    workspaceRoot.toString(),
-                )
+                workspaceTextLabel.text = IcarusBundle.message("icarus.widget.workspace.detected")
+                if (pkgLabel != null) {
+                    pkgLabel.text = IcarusBundle.message(
+                        "icarus.widget.package.detected",
+                        workspaceRoot.fileName.toString(),
+                    )
+                    pkgLabel.isVisible = true
+                }
+                if (pathLabel != null) {
+                    pathLabel.text = IcarusBundle.message(
+                        "icarus.widget.workspace.path",
+                        workspaceRoot.toString(),
+                    )
+                    pathLabel.isVisible = true
+                }
                 workspaceDetected = true
             }
             else {
                 workspaceIconLabel.icon = AllIcons.RunConfigurations.TestError
                 workspaceTextLabel.foreground = JBColor.RED
                 workspaceTextLabel.text = IcarusBundle.message("icarus.widget.workspace.notDetected")
+                if (pkgLabel != null) {
+                    pkgLabel.text = ""
+                    pkgLabel.isVisible = false
+                }
+                if (pathLabel != null) {
+                    pathLabel.text = ""
+                    pathLabel.isVisible = false
+                }
                 workspaceDetected = false
             }
         }
@@ -529,6 +577,8 @@ class IcarusOutputService(
         private val HOME_ACTION_STATUS_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.home.action.status")
         private val WORKSPACE_STATUS_ICON_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.workspace.icon")
         private val WORKSPACE_STATUS_TEXT_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.workspace.text")
+        private val PACKAGE_STATUS_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.package.status")
+        private val WORKSPACE_PATH_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.workspace.path")
         private val HOME_ACTION_BUTTONS_KEY = Key.create<List<JButton>>("icarus.toolwindow.home.buttons")
         private const val HOME_TAB_TITLE = "Home"
         private const val ACTION_SYNC_FROM_WORKSPACE_ID = "Icarus.SyncFromWorkspace"
