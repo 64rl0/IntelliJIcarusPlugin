@@ -239,7 +239,7 @@ internal object IcarusActionSupport {
     }
 
     fun commandFailureMessage(result: CommandRunResult.Success): String? {
-        if (result.exitCode == 0) {
+        if (result.exitCode != 1) {
             return null
         }
 
