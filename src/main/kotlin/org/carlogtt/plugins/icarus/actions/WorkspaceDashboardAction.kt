@@ -1,12 +1,12 @@
-package org.jetbrains.plugins.icarus.actions
+package org.carlogtt.plugins.icarus.actions
 
 import com.intellij.ide.BrowserUtil
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.components.service
-import org.jetbrains.plugins.icarus.IcarusBundle
-import org.jetbrains.plugins.icarus.toolwindow.IcarusOutputService
+import org.carlogtt.plugins.icarus.IcarusBundle
+import org.carlogtt.plugins.icarus.toolwindow.IcarusOutputService
 import java.nio.file.Files
 
 class WorkspaceDashboardAction : AnAction() {

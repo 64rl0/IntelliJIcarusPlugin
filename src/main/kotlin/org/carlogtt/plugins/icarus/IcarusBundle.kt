@@ -1,4 +1,4 @@
-package org.jetbrains.plugins.icarus
+package org.carlogtt.plugins.icarus
 
 import com.intellij.DynamicBundle
 import org.jetbrains.annotations.NonNls
