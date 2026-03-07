@@ -1,8 +1,7 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
-    <id>org.jetbrains.plugins.icarus</id>
+    <id>org.carlogtt.plugins.icarus</id>
     <name>Icarus</name>
-    <vendor>64rl0</vendor>
 
     <depends>com.intellij.modules.platform</depends>
 
@@ -12,65 +11,76 @@
         <notificationGroup id="Icarus" displayType="BALLOON"/>
         <toolWindow
             id="Icarus"
-            factoryClass="org.jetbrains.plugins.icarus.toolwindow.IcarusToolWindowFactory"
+            factoryClass="org.carlogtt.plugins.icarus.toolwindow.IcarusToolWindowFactory"
             anchor="bottom"
             doNotActivateOnStart="true"
             canCloseContents="true"
+        />
+        <fileType
+            name="Icarus Config"
+            implementationClass="org.carlogtt.plugins.icarus.filetype.IcarusConfigFileType"
+            fieldName="INSTANCE"
+            language="IcarusConfig"
+            fileNames="icarus.cfg"
+        />
+        <lang.syntaxHighlighterFactory
+            language="IcarusConfig"
+            implementationClass="org.carlogtt.plugins.icarus.filetype.IcarusConfigSyntaxHighlighterFactory"
         />
     </extensions>
 
     <actions>
         <action
             id="Icarus.SyncFromWorkspace"
-            class="org.jetbrains.plugins.icarus.actions.SyncFromWorkspaceAction"
+            class="org.carlogtt.plugins.icarus.actions.SyncFromWorkspaceAction"
             text="Sync From Workspace"
             description="Sync IDE from current workspace"
         />
         <action
             id="Icarus.Builder.MergeUserSpace"
-            class="org.jetbrains.plugins.icarus.actions.IcarusBuilderMergeAction"
+            class="org.carlogtt.plugins.icarus.actions.IcarusBuilderMergeAction"
             text="Merge UserSpace"
             description="Run icarus builder merge"
         />
         <action
             id="Icarus.WorkspaceDashboard"
-            class="org.jetbrains.plugins.icarus.actions.WorkspaceDashboardAction"
+            class="org.carlogtt.plugins.icarus.actions.WorkspaceDashboardAction"
             text="Workspace Dashboard"
             description="Open workspace dashboard report"
         />
         <action
             id="Icarus.Builder.Release"
-            class="org.jetbrains.plugins.icarus.actions.IcarusBuilderReleaseAction"
+            class="org.carlogtt.plugins.icarus.actions.IcarusBuilderReleaseAction"
             text="Release"
             description="Run icarus builder release"
         />
         <action
             id="Icarus.Builder.Build"
-            class="org.jetbrains.plugins.icarus.actions.IcarusBuilderBuildAction"
+            class="org.carlogtt.plugins.icarus.actions.IcarusBuilderBuildAction"
             text="Build"
             description="Run icarus builder build"
         />
         <action
             id="Icarus.Builder.Format"
-            class="org.jetbrains.plugins.icarus.actions.IcarusBuilderFormatAction"
+            class="org.carlogtt.plugins.icarus.actions.IcarusBuilderFormatAction"
             text="Format"
             description="Run icarus builder format"
         />
         <action
             id="Icarus.Builder.Test"
-            class="org.jetbrains.plugins.icarus.actions.IcarusBuilderTestAction"
+            class="org.carlogtt.plugins.icarus.actions.IcarusBuilderTestAction"
             text="Test"
             description="Run icarus builder test"
         />
         <action
             id="Icarus.Builder.Docs"
-            class="org.jetbrains.plugins.icarus.actions.IcarusBuilderDocsAction"
+            class="org.carlogtt.plugins.icarus.actions.IcarusBuilderDocsAction"
             text="Docs"
             description="Run icarus builder docs"
         />
         <action
             id="Icarus.Builder.Clean"
-            class="org.jetbrains.plugins.icarus.actions.IcarusBuilderCleanAction"
+            class="org.carlogtt.plugins.icarus.actions.IcarusBuilderCleanAction"
             text="Clean"
             description="Run icarus builder clean"
         />

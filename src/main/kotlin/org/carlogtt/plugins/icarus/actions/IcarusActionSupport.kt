@@ -1,4 +1,4 @@
-package org.jetbrains.plugins.icarus.actions
+package org.carlogtt.plugins.icarus.actions
 
 import com.intellij.ide.SaveAndSyncHandler
 import com.intellij.notification.Notification
@@ -11,8 +11,8 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.roots.ProjectRootManager
-import org.jetbrains.plugins.icarus.IcarusEnvironment
-import org.jetbrains.plugins.icarus.toolwindow.IcarusOutputService
+import org.carlogtt.plugins.icarus.IcarusEnvironment
+import org.carlogtt.plugins.icarus.toolwindow.IcarusOutputService
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.InvalidPathException

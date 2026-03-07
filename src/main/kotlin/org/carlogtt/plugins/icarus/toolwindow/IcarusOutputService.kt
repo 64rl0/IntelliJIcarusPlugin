@@ -1,4 +1,4 @@
-package org.jetbrains.plugins.icarus.toolwindow
+package org.carlogtt.plugins.icarus.toolwindow
 
 import com.intellij.icons.AllIcons
 import com.intellij.execution.filters.TextConsoleBuilderFactory
@@ -20,9 +20,9 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentFactory
 import com.intellij.util.ui.JBUI
-import org.jetbrains.plugins.icarus.actions.IcarusActionSupport
-import org.jetbrains.plugins.icarus.IcarusBundle
-import org.jetbrains.plugins.icarus.IcarusEnvironment
+import org.carlogtt.plugins.icarus.actions.IcarusActionSupport
+import org.carlogtt.plugins.icarus.IcarusBundle
+import org.carlogtt.plugins.icarus.IcarusEnvironment
 import java.awt.BorderLayout
 import java.awt.Font
 import java.util.concurrent.atomic.AtomicInteger

@@ -1,4 +1,4 @@
-package org.jetbrains.plugins.icarus.actions
+package org.carlogtt.plugins.icarus.actions
 
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.AnAction
@@ -25,7 +25,7 @@ import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
-import org.jetbrains.plugins.icarus.toolwindow.IcarusOutputService
+import org.carlogtt.plugins.icarus.toolwindow.IcarusOutputService
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path

@@ -1,4 +1,4 @@
-package org.jetbrains.plugins.icarus.actions
+package org.carlogtt.plugins.icarus.actions
 
 import com.intellij.openapi.components.Service
 import java.util.concurrent.atomic.AtomicBoolean

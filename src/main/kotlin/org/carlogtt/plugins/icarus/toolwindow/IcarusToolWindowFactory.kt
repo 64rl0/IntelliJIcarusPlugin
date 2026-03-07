@@ -1,4 +1,4 @@
-package org.jetbrains.plugins.icarus.toolwindow
+package org.carlogtt.plugins.icarus.toolwindow
 
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware

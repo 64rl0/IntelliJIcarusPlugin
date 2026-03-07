@@ -1,4 +1,4 @@
-package org.jetbrains.plugins.icarus
+package org.carlogtt.plugins.icarus
 
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
