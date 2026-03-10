@@ -105,6 +105,10 @@ kover {
 }
 
 tasks {
+    buildPlugin {
+        archiveBaseName.set("IntelliJ_Icarus_Plugin")
+    }
+
     wrapper {
         gradleVersion = providers.gradleProperty("gradleVersion").get()
     }
