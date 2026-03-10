@@ -80,6 +80,7 @@ declare -r project_root_dir_abs
 
 # User defined variables
 rm -rf "${project_root_dir_abs}/.gradle"
+rm -rf "${project_root_dir_abs}/.kotlin"
 rm -rf "${project_root_dir_abs}/.intellijPlatform"
 rm -rf "${project_root_dir_abs}/build"
 ./gradlew clean buildPlugin
