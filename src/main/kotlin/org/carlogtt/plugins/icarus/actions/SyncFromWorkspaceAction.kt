@@ -379,9 +379,20 @@ class SyncFromWorkspaceAction : AnAction() {
         interpreterLibPath: String,
         legacyInterpreterLibPath: String?,
     ) {
-        val interpreterLibVirtualFile = LocalFileSystem.getInstance().refreshAndFindFileByPath(interpreterLibPath) ?: return
+        val localFileSystem = LocalFileSystem.getInstance()
+        val interpreterLibVirtualFile = localFileSystem.refreshAndFindFileByPath(interpreterLibPath) ?: return
         val normalizedInterpreterLibPath = safePath(interpreterLibPath)?.toString() ?: interpreterLibPath
         val normalizedLegacyPath = legacyInterpreterLibPath?.let { path -> safePath(path)?.toString() ?: path }
+
+        // Derive the standard library root (parent of site-packages, e.g. lib/python3.11)
+        // and the lib-dynload sibling directory so they appear under additional interpreter paths
+        val stdLibRootPath = safePath(interpreterLibPath)?.parent
+        val stdLibRootVirtualFile = stdLibRootPath?.let { localFileSystem.refreshAndFindFileByPath(it.toString()) }
+        val libDynloadPath = stdLibRootPath?.resolve("lib-dynload")
+        val libDynloadVirtualFile = libDynloadPath
+            ?.takeIf { Files.isDirectory(it) }
+            ?.let { localFileSystem.refreshAndFindFileByPath(it.toString()) }
+        val normalizedLibDynloadPath = libDynloadPath?.toString()
 
         val additionalData = resolvePythonSdkAdditionalData(sdk, sdkModificator) ?: return
         if (additionalData.javaClass.name != PYTHON_SDK_ADDITIONAL_DATA_CLASS) {
@@ -397,13 +408,17 @@ class SyncFromWorkspaceAction : AnAction() {
                 ?.filterIsInstance<VirtualFile>()
                 ?.filter { file ->
                     val normalizedCurrentPath = safePath(file.path)?.toString() ?: file.path
-                    normalizedCurrentPath != normalizedLegacyPath && normalizedCurrentPath != normalizedInterpreterLibPath
+                    normalizedCurrentPath != normalizedLegacyPath &&
+                        normalizedCurrentPath != normalizedInterpreterLibPath &&
+                        normalizedCurrentPath != normalizedLibDynloadPath
                 }
                 ?.forEach(mergedAddedPaths::add)
         }
         catch (_: Exception) {
         }
 
+        stdLibRootVirtualFile?.let { mergedAddedPaths.add(it) }
+        libDynloadVirtualFile?.let { mergedAddedPaths.add(it) }
         mergedAddedPaths.add(interpreterLibVirtualFile)
 
         try {
