@@ -79,4 +79,10 @@ project_root_dir_abs="$(realpath -- "${script_dir_abs}/..")"
 declare -r project_root_dir_abs
 
 # User defined variables
+plugin_zip="$(ls "${project_root_dir_abs}/build/distributions/"*".zip")"
 
+curl -i \
+    --header "Authorization: Bearer ${CARLOGTT_SECRET_JETBRAINS_MARKETPLACE_API_KEY}" \
+    -F pluginId=30610 \
+    -F file=@"${plugin_zip}" \
+    'https://plugins.jetbrains.com/api/updates/upload'
