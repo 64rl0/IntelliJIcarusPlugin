@@ -10,6 +10,7 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.roots.ProjectRootManager
+import org.carlogtt.plugins.icarus.IcarusBundle
 import org.carlogtt.plugins.icarus.IcarusEnvironment
 import org.carlogtt.plugins.icarus.toolwindow.IcarusOutputService
 import java.io.IOException
@@ -247,16 +248,16 @@ internal object IcarusActionSupport {
     }
 
     fun notify(project: Project, type: NotificationType, content: String) {
-        Notification(NOTIFICATION_GROUP_ID, "Icarus", content, type).notify(project)
+        Notification(NOTIFICATION_GROUP_ID, IcarusBundle.message("icarus.notification.title"), content, type).notify(project)
     }
 
     fun notifyCommandAlreadyRunning(project: Project) {
         val runningTabTitle = currentRunningTabTitle(project)
         val message = if (runningTabTitle.isNullOrBlank()) {
-            COMMAND_ALREADY_RUNNING_MESSAGE
+            IcarusBundle.message("icarus.status.commandAlreadyRunning")
         }
         else {
-            "$COMMAND_ALREADY_RUNNING_MESSAGE Running tab: $runningTabTitle."
+            IcarusBundle.message("icarus.status.commandAlreadyRunningWithTab", runningTabTitle)
         }
         project.service<IcarusOutputService>().showHomeActionStatus(message)
     }
@@ -383,7 +384,6 @@ internal object IcarusActionSupport {
     private const val STREAM_READ_BUFFER_SIZE = 4096
     private const val PATH_ENVIRONMENT_VARIABLE = "PATH"
     private const val SHELL_ENVIRONMENT_VARIABLE = "SHELL"
-    private const val COMMAND_ALREADY_RUNNING_MESSAGE = "An instance of Icarus Builder is already running."
     private const val WORKSPACE_CONFIG_FILE_NAME = "icarus.cfg"
     private const val DEFAULT_LOGIN_SHELL = "/bin/zsh"
     private const val SHELL_PATH_PROBE_TIMEOUT_SECONDS = 3L

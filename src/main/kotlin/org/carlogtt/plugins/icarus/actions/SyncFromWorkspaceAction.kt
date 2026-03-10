@@ -25,6 +25,7 @@ import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
+import org.carlogtt.plugins.icarus.IcarusBundle
 import org.carlogtt.plugins.icarus.toolwindow.IcarusOutputService
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
@@ -50,34 +51,22 @@ class SyncFromWorkspaceAction : AnAction() {
             ?.toString()
             ?: run {
                 IcarusActionSupport.finishCommand(project)
-                IcarusActionSupport.notify(project, NotificationType.ERROR, "Workspace not found.")
+                IcarusActionSupport.notify(project, NotificationType.ERROR, IcarusBundle.message("icarus.notification.workspaceNotFound"))
                 return
             }
 
-        object : Task.Backgroundable(project, "Sync From Workspace", false) {
+        object : Task.Backgroundable(project, IcarusBundle.message("icarus.action.syncFromWorkspace"), false) {
             private var syncResult: SyncExecutionResult = SyncExecutionResult.Error("Sync did not run.")
 
             override fun run(indicator: ProgressIndicator) {
-                indicator.text = "Running Icarus Builder"
-                DumbService.getInstance(project).suspendIndexingAndRun("Icarus workspace sync", Runnable {
+                indicator.text = IcarusBundle.message("icarus.status.runningBuilder")
+                DumbService.getInstance(project).suspendIndexingAndRun(IcarusBundle.message("icarus.status.syncIndexingReason"), Runnable {
                     syncResult = runSyncWorkflow(project, workspaceRoot)
                 })
             }
 
-            override fun onSuccess() {
-                when (val result = syncResult) {
-                    is SyncExecutionResult.Error -> {
-                        Unit
-                    }
-
-                    is SyncExecutionResult.Success -> {
-                        Unit
-                    }
-                }
-            }
-
             override fun onThrowable(error: Throwable) {
-                IcarusActionSupport.notify(project, NotificationType.ERROR, "Icarus sync failed: ${error.message ?: "Unknown error"}")
+                IcarusActionSupport.notify(project, NotificationType.ERROR, IcarusBundle.message("icarus.notification.syncFailed", error.message ?: "Unknown error"))
             }
 
             override fun onFinished() {
@@ -92,8 +81,8 @@ class SyncFromWorkspaceAction : AnAction() {
         val outputService = project.service<IcarusOutputService>()
         val outputSession = IcarusActionSupport.createRunSession(
             project = project,
-            header = SYNC_RUN_HEADER,
-            tabTitleBaseOverride = SYNC_TAB_TITLE,
+            header = IcarusBundle.message("icarus.sync.header"),
+            tabTitleBaseOverride = IcarusBundle.message("icarus.sync.tabTitle"),
         ) ?: return SyncExecutionResult.Error("Icarus output widget is unavailable.")
 
         val workspaceName = resolveStepValue(
@@ -163,7 +152,7 @@ class SyncFromWorkspaceAction : AnAction() {
 
         outputService.appendSystem(
             outputSession,
-            "Step 8: Configure IDE Workspace\n",
+            IcarusBundle.message("icarus.sync.stepConfigureWorkspace"),
         )
 
         val rootsResult = runOnEdtAndWait {
@@ -195,7 +184,7 @@ class SyncFromWorkspaceAction : AnAction() {
 
         outputService.appendSystem(
             outputSession,
-            "Step 9: Configure IDE Python SDK\n",
+            IcarusBundle.message("icarus.sync.stepConfigurePythonSdk"),
         )
 
         val pythonVersionInfo = resolvePythonVersionsFromPythonHome(pythonHomePath)
@@ -224,10 +213,10 @@ class SyncFromWorkspaceAction : AnAction() {
         val elapsedSeconds = (System.currentTimeMillis() - startedAtMillis) / 1000.0
         outputService.appendSystem(
             outputSession,
-            "Workspace sync completed in ${"%.1f".format(Locale.US, elapsedSeconds)} secs\n",
+            IcarusBundle.message("icarus.sync.completed", "%.1f".format(Locale.US, elapsedSeconds)),
         )
 
-        return SyncExecutionResult.Success(sdkName)
+        return SyncExecutionResult.Success
     }
 
     private fun resolveStepValue(
@@ -302,7 +291,7 @@ class SyncFromWorkspaceAction : AnAction() {
 
         val pythonSdkType = SdkType.findByName(PYTHON_SDK_NAME)
             ?: SdkType.getAllTypeList().firstOrNull { it.javaClass.name == PYTHON_SDK_CLASS }
-            ?: return SdkConfigurationResult.Error("Python SDK type is unavailable. Install and enable the Python plugin.")
+            ?: return SdkConfigurationResult.Error(IcarusBundle.message("icarus.sync.pythonPluginMissing"))
 
         val existingSdks = ProjectJdkTable.getInstance().allJdks
         val sdk = SdkConfigurationUtil.findByPath(pythonSdkType, existingSdks, interpreterPath)
@@ -326,7 +315,7 @@ class SyncFromWorkspaceAction : AnAction() {
             return SdkConfigurationResult.Error("Resolved Python SDK exists but is not set as project interpreter.")
         }
 
-        return SdkConfigurationResult.Success(sdk)
+        return SdkConfigurationResult.Success
     }
 
     private fun isSameSdk(current: Sdk?, target: Sdk): Boolean {
@@ -670,7 +659,7 @@ class SyncFromWorkspaceAction : AnAction() {
     }
 
     private sealed interface SyncExecutionResult {
-        data class Success(val sdkName: String) : SyncExecutionResult
+        data object Success : SyncExecutionResult
         data class Error(val message: String) : SyncExecutionResult
     }
 
@@ -680,7 +669,7 @@ class SyncFromWorkspaceAction : AnAction() {
     )
 
     private sealed interface SdkConfigurationResult {
-        data class Success(val sdk: Sdk) : SdkConfigurationResult
+        data object Success : SdkConfigurationResult
         data class Error(val message: String) : SdkConfigurationResult
     }
 
@@ -696,8 +685,6 @@ class SyncFromWorkspaceAction : AnAction() {
         private const val PYTHON_SDK_CLASS = "com.jetbrains.python.sdk.PythonSdkType"
         private const val PYTHON_SDK_ADDITIONAL_DATA_CLASS = "com.jetbrains.python.sdk.PythonSdkAdditionalData"
         private const val PYTHON_SDK_CORE_TOOLS_CLASS = "com.jetbrains.python.sdk.PySdkCoreToolsKt"
-        private const val SYNC_RUN_HEADER = "sync from workspace"
-        private const val SYNC_TAB_TITLE = "SyncWs"
         private val COLON_DELIMITED_PATH_KEYS = setOf(
             "devrun_excluderoot.pythonhome",
             "devrun_excluderoot.pythonpath",

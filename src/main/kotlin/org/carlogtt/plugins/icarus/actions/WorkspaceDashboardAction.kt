@@ -21,7 +21,7 @@ class WorkspaceDashboardAction : AnAction() {
 
         val workspaceRoot = IcarusActionSupport.resolveDetectedWorkspaceRoot(project)
             ?: run {
-                IcarusActionSupport.notify(project, NotificationType.ERROR, IcarusBundle.message("icarus.widget.workspace.notDetected"))
+                IcarusActionSupport.notify(project, NotificationType.ERROR, IcarusBundle.message("icarus.notification.workspaceNotFound"))
                 return
             }
 

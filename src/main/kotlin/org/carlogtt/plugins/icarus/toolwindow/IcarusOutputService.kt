@@ -532,14 +532,9 @@ class IcarusOutputService(
     }
 
     private fun contentTitle(commandLine: String, runIndex: Int): String {
-        val normalizedCommand = if (commandLine == WORKSPACE_SYNC_COMMAND_LINE) {
-            WORKSPACE_SYNC_TAB_TITLE
-        }
-        else {
-            val commandSuffix = commandLine.removePrefix("icarus builder ").ifBlank { commandLine }
-            commandSuffix.replaceFirstChar { firstChar ->
-                if (firstChar.isLowerCase()) firstChar.titlecase() else firstChar.toString()
-            }
+        val commandSuffix = commandLine.removePrefix("icarus builder ").ifBlank { commandLine }
+        val normalizedCommand = commandSuffix.replaceFirstChar { firstChar ->
+            if (firstChar.isLowerCase()) firstChar.titlecase() else firstChar.toString()
         }
 
         return "$normalizedCommand #$runIndex"
@@ -580,7 +575,7 @@ class IcarusOutputService(
         private val PACKAGE_STATUS_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.package.status")
         private val WORKSPACE_PATH_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.workspace.path")
         private val HOME_ACTION_BUTTONS_KEY = Key.create<List<JButton>>("icarus.toolwindow.home.buttons")
-        private const val HOME_TAB_TITLE = "Home"
+        private val HOME_TAB_TITLE = IcarusBundle.message("icarus.widget.homeTabTitle")
         private const val ACTION_SYNC_FROM_WORKSPACE_ID = "Icarus.SyncFromWorkspace"
         private const val ACTION_MERGE_USERSPACE_ID = "Icarus.Builder.MergeUserSpace"
         private const val ACTION_WORKSPACE_DASHBOARD_ID = "Icarus.WorkspaceDashboard"
@@ -590,7 +585,5 @@ class IcarusOutputService(
         private const val ACTION_BUILDER_TEST_ID = "Icarus.Builder.Test"
         private const val ACTION_BUILDER_DOCS_ID = "Icarus.Builder.Docs"
         private const val ACTION_BUILDER_CLEAN_ID = "Icarus.Builder.Clean"
-        private const val WORKSPACE_SYNC_COMMAND_LINE = "icarus builder path devrun_excluderoot.pythonhome"
-        private const val WORKSPACE_SYNC_TAB_TITLE = "SyncWs"
     }
 }

@@ -7,17 +7,16 @@ import java.nio.file.Path
 internal object IcarusEnvironment {
 
     data class ExecutableHomeInfo(
-        val homeDirectory: String?,
         val expectedExecutablePath: Path?,
         val executableAvailable: Boolean,
     )
 
     fun executableHomeInfo(): ExecutableHomeInfo {
-        val homeDirectory = homeDirectory()
+        val homeDirectory = resolveHomeDirectory()
         val expectedExecutablePath = expectedIcarusExecutablePath(homeDirectory)
         val executableAvailable = expectedExecutablePath?.let(::isExecutableFile) ?: false
 
-        return ExecutableHomeInfo(homeDirectory, expectedExecutablePath, executableAvailable)
+        return ExecutableHomeInfo(expectedExecutablePath, executableAvailable)
     }
 
     fun resolveIcarusExecutablePath(): Path? {
@@ -26,11 +25,7 @@ internal object IcarusEnvironment {
     }
 
     fun expectedIcarusExecutablePath(): Path? {
-        return expectedIcarusExecutablePath(homeDirectory())
-    }
-
-    fun homeDirectory(): String? {
-        return resolveHomeDirectory()
+        return expectedIcarusExecutablePath(resolveHomeDirectory())
     }
 
     private fun expectedIcarusExecutablePath(homeDirectory: String?): Path? {

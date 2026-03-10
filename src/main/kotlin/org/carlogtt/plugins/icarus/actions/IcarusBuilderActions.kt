@@ -5,6 +5,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
+import org.carlogtt.plugins.icarus.IcarusBundle
 
 sealed class IcarusBuilderCommandAction(
     private val builderArguments: List<String>,
@@ -30,7 +31,7 @@ sealed class IcarusBuilderCommandAction(
             ?.toString()
             ?: run {
                 IcarusActionSupport.finishCommand(project)
-                IcarusActionSupport.notify(project, NotificationType.ERROR, "Workspace not found.")
+                IcarusActionSupport.notify(project, NotificationType.ERROR, IcarusBundle.message("icarus.notification.workspaceNotFound"))
                 return
             }
 
@@ -38,24 +39,9 @@ sealed class IcarusBuilderCommandAction(
         val commandLine = IcarusActionSupport.toCommandLine(command)
 
         object : Task.Backgroundable(project, commandLine, false) {
-            private var commandRunResult: IcarusActionSupport.CommandRunResult =
-                IcarusActionSupport.CommandRunResult.Error("Icarus Builder command did not run.")
-
             override fun run(indicator: ProgressIndicator) {
-                indicator.text = "Running Icarus Builder"
-                commandRunResult = IcarusActionSupport.runCommandInWidget(project, workspaceRoot, command)
-            }
-
-            override fun onSuccess() {
-                when (val result = commandRunResult) {
-                    is IcarusActionSupport.CommandRunResult.Error -> {
-                        Unit
-                    }
-
-                    is IcarusActionSupport.CommandRunResult.Success -> {
-                        Unit
-                    }
-                }
+                indicator.text = IcarusBundle.message("icarus.status.runningBuilder")
+                IcarusActionSupport.runCommandInWidget(project, workspaceRoot, command)
             }
 
             override fun onFinished() {
