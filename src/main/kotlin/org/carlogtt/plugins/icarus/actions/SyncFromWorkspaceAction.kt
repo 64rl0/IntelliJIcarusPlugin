@@ -58,7 +58,7 @@ class SyncFromWorkspaceAction : AnAction() {
             private var syncResult: SyncExecutionResult = SyncExecutionResult.Error("Sync did not run.")
 
             override fun run(indicator: ProgressIndicator) {
-                indicator.text = "Running Icarus workspace sync"
+                indicator.text = "Running Icarus Builder"
                 DumbService.getInstance(project).suspendIndexingAndRun("Icarus workspace sync", Runnable {
                     syncResult = runSyncWorkflow(project, workspaceRoot)
                 })
