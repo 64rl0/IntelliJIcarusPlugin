@@ -6,7 +6,7 @@ A development toolkit, providing integration of Icarus Builder build system into
 
 
 ## Build
-Run `./gradlew clean buildPlugin`.
+Run `make build-plugin`.
 
 
 ## Install from disk
