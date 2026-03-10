@@ -1,6 +1,5 @@
 package org.carlogtt.plugins.icarus.actions
 
-import com.intellij.ide.SaveAndSyncHandler
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType
 import com.intellij.execution.process.AnsiEscapeDecoder
@@ -72,7 +71,7 @@ internal object IcarusActionSupport {
         header: String,
         tabTitleBaseOverride: String? = null,
     ): IcarusOutputService.OutputSession? {
-        saveAllOpenDocuments(project)
+        saveAllOpenDocuments()
 
         val outputService = project.service<IcarusOutputService>()
         val outputSession = outputService.startRun(header, tabTitleBaseOverride) ?: return null
@@ -304,14 +303,10 @@ internal object IcarusActionSupport {
         return ANSI_ESCAPE_SEQUENCE_REGEX.replace(text, "")
     }
 
-    private fun saveAllOpenDocuments(project: Project) {
+    private fun saveAllOpenDocuments() {
         val application = ApplicationManager.getApplication()
         val saveAction = {
             FileDocumentManager.getInstance().saveAllDocuments()
-            SaveAndSyncHandler.getInstance().scheduleSave(
-                SaveAndSyncHandler.SaveTask(project = project, forceSavingAllSettings = true),
-                true,
-            )
         }
 
         if (application.isDispatchThread) {

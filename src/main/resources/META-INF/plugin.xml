@@ -14,7 +14,6 @@
             id="Icarus"
             factoryClass="org.carlogtt.plugins.icarus.toolwindow.IcarusToolWindowFactory"
             anchor="bottom"
-            doNotActivateOnStart="true"
             canCloseContents="true"
         />
         <fileType
