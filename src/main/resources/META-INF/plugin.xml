@@ -2,6 +2,7 @@
 <idea-plugin>
     <id>org.carlogtt.plugins.icarus</id>
     <name>Icarus</name>
+    <vendor>carlogtt</vendor>
 
     <depends>com.intellij.modules.platform</depends>
 
