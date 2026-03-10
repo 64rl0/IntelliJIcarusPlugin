@@ -5,6 +5,15 @@ A development toolkit, providing integration of Icarus Builder build system into
 <!-- Plugin description end -->
 
 
+## Install from JetBrains Marketplace
+
+<script src="https://plugins.jetbrains.com/assets/scripts/mp-widget.js"></script>
+<script>
+  MarketplaceWidget.setupMarketplaceWidget('install', 30610, "#install-widget");
+</script>
+<div id="install-widget"></div>
+
+
 ## Build
 Run `make build-plugin`.
 
