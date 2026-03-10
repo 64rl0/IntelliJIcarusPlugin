@@ -1,0 +1,5 @@
+[*.sh]
+indent_style = space
+indent_size = 4
+keep_padding = false
+binary_next_line = true
