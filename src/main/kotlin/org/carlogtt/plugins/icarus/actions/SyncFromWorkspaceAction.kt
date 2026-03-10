@@ -96,13 +96,13 @@ class SyncFromWorkspaceAction : AnAction() {
             tabTitleBaseOverride = SYNC_TAB_TITLE,
         ) ?: return SyncExecutionResult.Error("Icarus output widget is unavailable.")
 
-        val packageNamePascal = resolveStepValue(
+        val workspaceName = resolveStepValue(
             project = project,
             workspaceRoot = workspaceRoot,
             outputService = outputService,
             outputSession = outputSession,
             stepNumber = 1,
-            pathKey = "pkg.name-pascal",
+            pathKey = "workspace.name",
         ) ?: return SyncExecutionResult.Error("Step 1 failed.")
 
         if (resolveStepValue(
@@ -206,7 +206,7 @@ class SyncFromWorkspaceAction : AnAction() {
 
         val interpreterLibPath = pythonPath
 
-        val sdkName = "Py${pythonVersionInfo.pyFullVersion} ($packageNamePascal)"
+        val sdkName = "Py${pythonVersionInfo.pyFullVersion} ($workspaceName)"
         val sdkResult = runOnEdtAndWait {
             configureProjectInterpreter(project, interpreterPath, interpreterLibPath, sdkName)
         }
