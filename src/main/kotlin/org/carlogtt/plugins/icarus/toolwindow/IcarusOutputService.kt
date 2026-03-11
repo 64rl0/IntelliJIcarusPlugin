@@ -71,6 +71,9 @@ class IcarusOutputService(
     private var homeActionButtons: List<JButton> = emptyList()
 
     @Volatile
+    private var homeFocusPanel: JPanel? = null
+
+    @Volatile
     private var workspaceDetected: Boolean = false
 
     private val runCounter = AtomicInteger(0)
@@ -184,6 +187,7 @@ class IcarusOutputService(
             workspacePathLabel = existingHomeContent.getUserData(WORKSPACE_PATH_LABEL_KEY)
             workspaceNotDetectedDescLabel = existingHomeContent.getUserData(WORKSPACE_NOT_DETECTED_DESC_LABEL_KEY)
             homeActionButtons = existingHomeContent.getUserData(HOME_ACTION_BUTTONS_KEY).orEmpty()
+            homeFocusPanel = existingHomeContent.getUserData(HOME_FOCUS_PANEL_KEY)
             return
         }
 
@@ -356,6 +360,7 @@ class IcarusOutputService(
         homeContent.putUserData(WORKSPACE_PATH_LABEL_KEY, wsPathLabel)
         homeContent.putUserData(WORKSPACE_NOT_DETECTED_DESC_LABEL_KEY, workspaceNotDetectedDescLabel)
         homeContent.putUserData(HOME_ACTION_BUTTONS_KEY, homeActionButtons)
+        homeContent.putUserData(HOME_FOCUS_PANEL_KEY, homePanel)
         contentManager.addContent(homeContent)
 
         this.homeStatusLabel = statusLabel
@@ -365,6 +370,7 @@ class IcarusOutputService(
         this.packageStatusLabel = packageLabel
         this.workspacePathLabel = wsPathLabel
         this.workspaceNotDetectedDescLabel = workspaceNotDetectedDescLabel
+        this.homeFocusPanel = homePanel
         refreshHomeContent()
     }
 
@@ -521,11 +527,13 @@ class IcarusOutputService(
 
             addActionListener {
                 if (!workspaceDetected) {
+                    homeFocusPanel?.requestFocusInWindow()
                     return@addActionListener
                 }
 
                 if (IcarusActionSupport.isCommandRunning(project)) {
                     IcarusActionSupport.notifyCommandAlreadyRunning(project)
+                    homeFocusPanel?.requestFocusInWindow()
                     return@addActionListener
                 }
 
@@ -596,6 +604,7 @@ class IcarusOutputService(
         private val WORKSPACE_PATH_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.workspace.path")
         private val WORKSPACE_NOT_DETECTED_DESC_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.workspace.notdetected.desc")
         private val HOME_ACTION_BUTTONS_KEY = Key.create<List<JButton>>("icarus.toolwindow.home.buttons")
+        private val HOME_FOCUS_PANEL_KEY = Key.create<JPanel>("icarus.toolwindow.home.focus.panel")
         private val HOME_TAB_TITLE = IcarusBundle.message("icarus.widget.homeTabTitle")
         private const val ACTION_SYNC_FROM_WORKSPACE_ID = "Icarus.SyncFromWorkspace"
         private const val ACTION_MERGE_USERSPACE_ID = "Icarus.Builder.MergeUserSpace"
