@@ -65,6 +65,9 @@ class IcarusOutputService(
     private var workspacePathLabel: JLabel? = null
 
     @Volatile
+    private var workspaceNotDetectedDescLabel: JLabel? = null
+
+    @Volatile
     private var homeActionButtons: List<JButton> = emptyList()
 
     @Volatile
@@ -179,6 +182,7 @@ class IcarusOutputService(
             workspaceStatusTextLabel = existingHomeContent.getUserData(WORKSPACE_STATUS_TEXT_LABEL_KEY)
             packageStatusLabel = existingHomeContent.getUserData(PACKAGE_STATUS_LABEL_KEY)
             workspacePathLabel = existingHomeContent.getUserData(WORKSPACE_PATH_LABEL_KEY)
+            workspaceNotDetectedDescLabel = existingHomeContent.getUserData(WORKSPACE_NOT_DETECTED_DESC_LABEL_KEY)
             homeActionButtons = existingHomeContent.getUserData(HOME_ACTION_BUTTONS_KEY).orEmpty()
             return
         }
@@ -239,6 +243,13 @@ class IcarusOutputService(
             add(workspaceStatusText)
         }
         homeContentPanel.add(workspaceStatusPanel)
+
+        val workspaceNotDetectedDescLabel = JLabel(IcarusBundle.message("icarus.widget.workspace.notDetectedDescription")).apply {
+            alignmentX = 0.0f
+            border = JBUI.Borders.emptyTop(4)
+            isVisible = true
+        }
+        homeContentPanel.add(workspaceNotDetectedDescLabel)
 
         val packageLabel = JLabel().apply {
             alignmentX = 0.0f
@@ -343,6 +354,7 @@ class IcarusOutputService(
         homeContent.putUserData(WORKSPACE_STATUS_TEXT_LABEL_KEY, workspaceStatusText)
         homeContent.putUserData(PACKAGE_STATUS_LABEL_KEY, packageLabel)
         homeContent.putUserData(WORKSPACE_PATH_LABEL_KEY, wsPathLabel)
+        homeContent.putUserData(WORKSPACE_NOT_DETECTED_DESC_LABEL_KEY, workspaceNotDetectedDescLabel)
         homeContent.putUserData(HOME_ACTION_BUTTONS_KEY, homeActionButtons)
         contentManager.addContent(homeContent)
 
@@ -352,6 +364,7 @@ class IcarusOutputService(
         this.workspaceStatusTextLabel = workspaceStatusText
         this.packageStatusLabel = packageLabel
         this.workspacePathLabel = wsPathLabel
+        this.workspaceNotDetectedDescLabel = workspaceNotDetectedDescLabel
         refreshHomeContent()
     }
 
@@ -446,6 +459,7 @@ class IcarusOutputService(
             val workspaceRoot = IcarusActionSupport.resolveDetectedWorkspaceRoot(project)
             val pkgLabel = packageStatusLabel
             val pathLabel = workspacePathLabel
+            val descLabel = workspaceNotDetectedDescLabel
 
             if (workspaceRoot != null) {
                 workspaceIconLabel.icon = AllIcons.RunConfigurations.TestPassed
@@ -468,6 +482,9 @@ class IcarusOutputService(
                     )
                     pathLabel.isVisible = true
                 }
+                if (descLabel != null) {
+                    descLabel.isVisible = false
+                }
                 workspaceDetected = true
             }
             else {
@@ -481,6 +498,9 @@ class IcarusOutputService(
                 if (pathLabel != null) {
                     pathLabel.text = ""
                     pathLabel.isVisible = false
+                }
+                if (descLabel != null) {
+                    descLabel.isVisible = true
                 }
                 workspaceDetected = false
             }
@@ -574,6 +594,7 @@ class IcarusOutputService(
         private val WORKSPACE_STATUS_TEXT_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.workspace.text")
         private val PACKAGE_STATUS_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.package.status")
         private val WORKSPACE_PATH_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.workspace.path")
+        private val WORKSPACE_NOT_DETECTED_DESC_LABEL_KEY = Key.create<JLabel>("icarus.toolwindow.workspace.notdetected.desc")
         private val HOME_ACTION_BUTTONS_KEY = Key.create<List<JButton>>("icarus.toolwindow.home.buttons")
         private val HOME_TAB_TITLE = IcarusBundle.message("icarus.widget.homeTabTitle")
         private const val ACTION_SYNC_FROM_WORKSPACE_ID = "Icarus.SyncFromWorkspace"
