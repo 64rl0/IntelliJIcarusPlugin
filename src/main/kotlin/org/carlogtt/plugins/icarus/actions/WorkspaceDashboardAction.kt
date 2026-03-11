@@ -5,8 +5,11 @@ import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.components.service
+import com.intellij.openapi.vfs.LocalFileSystem
 import org.carlogtt.plugins.icarus.IcarusBundle
 import org.carlogtt.plugins.icarus.toolwindow.IcarusOutputService
+import com.intellij.ide.browsers.ReloadMode
+import org.jetbrains.builtInWebServer.getBuiltInServerUrls
 import java.nio.file.Files
 
 class WorkspaceDashboardAction : AnAction() {
@@ -35,7 +38,18 @@ class WorkspaceDashboardAction : AnAction() {
             return
         }
 
-        BrowserUtil.browse(dashboardPath.toUri().toString())
+        val virtualFile = LocalFileSystem.getInstance().refreshAndFindFileByPath(dashboardPath.toString())
+        val url = virtualFile?.let {
+            getBuiltInServerUrls(it, project, null, reloadMode = ReloadMode.DISABLED).firstOrNull()
+        }
+
+        if (url != null) {
+            BrowserUtil.browse(url.toExternalForm())
+        }
+        else {
+            BrowserUtil.browse(dashboardPath.toUri().toString())
+        }
+
         project.service<IcarusOutputService>().focusHome()
     }
 }
