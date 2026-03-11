@@ -150,6 +150,18 @@ class SyncFromWorkspaceAction : AnAction() {
             pathKey = "workspace.build-root",
         ) ?: return SyncExecutionResult.Error("Step 7 failed.")
 
+        val pythonInterpreters = resolveStepValue(
+            project = project,
+            workspaceRoot = workspaceRoot,
+            outputService = outputService,
+            outputSession = outputSession,
+            stepNumber = 8,
+            pathKey = "workspace.python-interpreters",
+        ) ?: return SyncExecutionResult.Error("Step 8 failed.")
+
+        val pythonVersionInfo = parsePythonVersionFromInterpreters(pythonInterpreters)
+            ?: return SyncExecutionResult.Error("Step 8 failed: Could not parse Python version from workspace.python-interpreters output.")
+
         outputService.appendSystem(
             outputSession,
             IcarusBundle.message("icarus.sync.stepConfigureWorkspace"),
@@ -166,7 +178,7 @@ class SyncFromWorkspaceAction : AnAction() {
 
         when (rootsResult) {
             is RootsConfigurationResult.Error -> {
-                outputService.appendStdErr(outputSession, "Step 8 failed: ${rootsResult.message}\n")
+                outputService.appendStdErr(outputSession, "Step 9 failed: ${rootsResult.message}\n")
                 return SyncExecutionResult.Error(rootsResult.message)
             }
 
@@ -187,11 +199,8 @@ class SyncFromWorkspaceAction : AnAction() {
             IcarusBundle.message("icarus.sync.stepConfigurePythonSdk"),
         )
 
-        val pythonVersionInfo = resolvePythonVersionsFromPythonHome(pythonHomePath)
-            ?: return SyncExecutionResult.Error("Step 9 failed: Could not resolve Python versions from Step 3 path basename.")
-
         val interpreterPath = buildInterpreterPath(pythonHomePath)
-            ?: return SyncExecutionResult.Error("Step 9 failed: Invalid python home path from Step 3.")
+            ?: return SyncExecutionResult.Error("Step 10 failed: Invalid python home path from Step 3.")
 
         val interpreterLibPath = pythonPath
 
@@ -201,7 +210,7 @@ class SyncFromWorkspaceAction : AnAction() {
         }
         when (sdkResult) {
             is SdkConfigurationResult.Error -> {
-                outputService.appendStdErr(outputSession, "Step 9 failed: ${sdkResult.message}\n")
+                outputService.appendStdErr(outputSession, "Step 10 failed: ${sdkResult.message}\n")
                 return SyncExecutionResult.Error(sdkResult.message)
             }
 
@@ -299,13 +308,10 @@ class SyncFromWorkspaceAction : AnAction() {
             ?: return SdkConfigurationResult.Error("Could not create a Python SDK for path: $interpreterPath")
 
         val projectRootManager = ProjectRootManager.getInstance(project)
-        val wasAlreadyProjectInterpreter = isSameSdk(projectRootManager.projectSdk, sdk)
 
         WriteAction.run<Throwable> {
             updateSdkNameAndLibPath(sdk, sdkName, interpreterLibPath)
-            if (!wasAlreadyProjectInterpreter) {
-                projectRootManager.projectSdk = sdk
-            }
+            projectRootManager.projectSdk = sdk
             ModuleManager.getInstance(project).modules.forEach { module ->
                 ModuleRootModificationUtil.setModuleSdk(module, sdk)
             }
@@ -610,34 +616,33 @@ class SyncFromWorkspaceAction : AnAction() {
         return lines.joinToString(separator = "\n", postfix = "\n\n")
     }
 
-    private fun resolvePythonVersionsFromPythonHome(pythonHomePath: String): PythonVersionInfo? {
-        val pythonHome = safePath(pythonHomePath) ?: return null
-        val basename = pythonHome.fileName?.toString()?.trim().orEmpty()
-        if (basename.isEmpty()) {
-            return null
-        }
+    private fun parsePythonVersionFromInterpreters(interpretersOutput: String): PythonVersionInfo? {
+        val firstInterpreter = interpretersOutput.split(';').firstOrNull()?.trim()
+        if (firstInterpreter.isNullOrEmpty()) return null
 
-        val pyFullVersion = PYTHON_HOME_BASENAME_VERSION_REGEX.matchEntire(basename)?.groupValues?.get(1)
-            ?: return null
-        val pyVersion = PYTHON_VERSION_PREFIX_REGEX.matchEntire(pyFullVersion)?.groupValues?.get(1)
-            ?: return null
+        val parts = firstInterpreter.split(':')
+        if (parts.size < 2) return null
+
+        val pyVersion = parts[0].trim()
+        val pyFullVersion = parts[1].trim()
+        if (pyVersion.isEmpty() || pyFullVersion.isEmpty()) return null
 
         return PythonVersionInfo(pyVersion = pyVersion, pyFullVersion = pyFullVersion)
     }
 
     private fun extractResolvedPathValue(stdout: String, pathKey: String): String? {
-        return if (COLON_DELIMITED_PATH_KEYS.contains(pathKey)) {
-            extractFirstColonDelimitedToken(stdout)
+        return if (SEMICOLON_DELIMITED_PATH_KEYS.contains(pathKey)) {
+            extractFirstSemicolonDelimitedToken(stdout)
         }
         else {
             extractFirstLineToken(stdout)
         }
     }
 
-    private fun extractFirstColonDelimitedToken(stdout: String): String? {
+    private fun extractFirstSemicolonDelimitedToken(stdout: String): String? {
         return stdout
             .lineSequence()
-            .flatMap { line -> line.split(':').asSequence() }
+            .flatMap { line -> line.split(';').asSequence() }
             .map { token -> token.trim() }
             .firstOrNull { token -> token.isNotEmpty() }
     }
@@ -694,13 +699,11 @@ class SyncFromWorkspaceAction : AnAction() {
     }
 
     companion object {
-        private val PYTHON_HOME_BASENAME_VERSION_REGEX = Regex("(\\d+\\.\\d+\\.\\d+)")
-        private val PYTHON_VERSION_PREFIX_REGEX = Regex("(\\d+\\.\\d+)\\.\\d+")
         private const val PYTHON_SDK_NAME = "Python SDK"
         private const val PYTHON_SDK_CLASS = "com.jetbrains.python.sdk.PythonSdkType"
         private const val PYTHON_SDK_ADDITIONAL_DATA_CLASS = "com.jetbrains.python.sdk.PythonSdkAdditionalData"
         private const val PYTHON_SDK_CORE_TOOLS_CLASS = "com.jetbrains.python.sdk.PySdkCoreToolsKt"
-        private val COLON_DELIMITED_PATH_KEYS = setOf(
+        private val SEMICOLON_DELIMITED_PATH_KEYS = setOf(
             "devrun_excluderoot.pythonhome",
             "devrun_excluderoot.pythonpath",
         )
