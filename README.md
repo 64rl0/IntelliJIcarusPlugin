@@ -1,7 +1,7 @@
 # IntelliJ Icarus Plugin
 
 <!-- Plugin description -->
-A development toolkit, providing integration of Icarus Builder build system into JetBrains' products.
+A development toolkit, providing integration of Icarus build system into JetBrains' products.
 <!-- Plugin description end -->
 
 

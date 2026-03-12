@@ -9,6 +9,7 @@ internal class IcarusCommandStateService {
 
     private val running = AtomicBoolean(false)
     private val runningTabTitle = AtomicReference<String?>(null)
+    private val verboseEnabled = AtomicBoolean(false)
 
     fun tryAcquire(): Boolean {
         val acquired = running.compareAndSet(false, true)
@@ -33,5 +34,13 @@ internal class IcarusCommandStateService {
 
     fun isRunning(): Boolean {
         return running.get()
+    }
+
+    fun isVerboseEnabled(): Boolean {
+        return verboseEnabled.get()
+    }
+
+    fun setVerboseEnabled(enabled: Boolean) {
+        verboseEnabled.set(enabled)
     }
 }

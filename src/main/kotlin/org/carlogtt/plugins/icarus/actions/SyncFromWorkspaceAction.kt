@@ -236,7 +236,7 @@ class SyncFromWorkspaceAction : AnAction() {
         stepNumber: Int,
         pathKey: String,
     ): String? {
-        val command = IcarusActionSupport.buildIcarusBuilderCommand(listOf("path", pathKey))
+        val command = IcarusActionSupport.buildIcarusBuilderCommand(project, listOf("path", pathKey))
         val commandLine = IcarusActionSupport.toCommandLine(command)
         outputService.appendSystem(outputSession, "Step $stepNumber: $commandLine\n")
 

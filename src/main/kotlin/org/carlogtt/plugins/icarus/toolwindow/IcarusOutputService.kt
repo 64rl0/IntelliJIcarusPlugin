@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JButton
+import javax.swing.JCheckBox
 import javax.swing.JLabel
 import javax.swing.JPanel
 
@@ -342,6 +343,21 @@ class IcarusOutputService(
             )
         }
         homeContentPanel.add(builderActionsRow)
+        homeContentPanel.add(Box.createVerticalStrut(24))
+
+        homeContentPanel.add(sectionLabel(IcarusBundle.message("icarus.widget.section.options")))
+        homeContentPanel.add(Box.createVerticalStrut(6))
+
+        val verboseCheckBox = JCheckBox(IcarusBundle.message("icarus.widget.option.verbose")).apply {
+            alignmentX = 0.0f
+            isOpaque = false
+            toolTipText = IcarusBundle.message("icarus.widget.option.verbose.tooltip")
+            isSelected = IcarusActionSupport.isVerboseEnabled(project)
+            addActionListener {
+                IcarusActionSupport.setVerboseEnabled(project, isSelected)
+            }
+        }
+        homeContentPanel.add(verboseCheckBox)
 
         val homePanel = JPanel(BorderLayout()).apply {
             isFocusable = true
@@ -560,7 +576,10 @@ class IcarusOutputService(
     }
 
     private fun contentTitle(commandLine: String, runIndex: Int): String {
-        val commandSuffix = commandLine.removePrefix("icarus builder ").ifBlank { commandLine }
+        val commandSuffix = commandLine
+            .removePrefix("icarus -v builder ")
+            .removePrefix("icarus builder ")
+            .ifBlank { commandLine }
         val normalizedCommand = commandSuffix.replaceFirstChar { firstChar ->
             if (firstChar.isLowerCase()) firstChar.titlecase() else firstChar.toString()
         }

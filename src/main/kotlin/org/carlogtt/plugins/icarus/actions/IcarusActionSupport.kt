@@ -35,6 +35,7 @@ internal object IcarusActionSupport {
 
     private const val NOTIFICATION_GROUP_ID = "Icarus"
     private val ICARUS_BUILDER_BASE_COMMAND = listOf("icarus", "builder")
+    private val ICARUS_BUILDER_VERBOSE_BASE_COMMAND = listOf("icarus", "-v", "builder")
 
     fun resolveWorkspaceRoot(project: Project): String? {
         project.basePath?.takeIf(::isExistingDirectory)?.let { return it }
@@ -59,8 +60,9 @@ internal object IcarusActionSupport {
         return if (Files.isRegularFile(workspaceConfigPath)) rootPath else null
     }
 
-    fun buildIcarusBuilderCommand(arguments: List<String>): List<String> {
-        return ICARUS_BUILDER_BASE_COMMAND + arguments
+    fun buildIcarusBuilderCommand(project: Project, arguments: List<String>): List<String> {
+        val base = if (isVerboseEnabled(project)) ICARUS_BUILDER_VERBOSE_BASE_COMMAND else ICARUS_BUILDER_BASE_COMMAND
+        return base + arguments
     }
 
     fun toCommandLine(command: List<String>): String {
@@ -273,6 +275,14 @@ internal object IcarusActionSupport {
 
     fun isCommandRunning(project: Project): Boolean {
         return project.service<IcarusCommandStateService>().isRunning()
+    }
+
+    fun isVerboseEnabled(project: Project): Boolean {
+        return project.service<IcarusCommandStateService>().isVerboseEnabled()
+    }
+
+    fun setVerboseEnabled(project: Project, enabled: Boolean) {
+        project.service<IcarusCommandStateService>().setVerboseEnabled(enabled)
     }
 
     private fun setRunningTabTitle(project: Project, tabTitle: String) {

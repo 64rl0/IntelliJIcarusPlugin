@@ -35,7 +35,7 @@ sealed class IcarusBuilderCommandAction(
                 return
             }
 
-        val command = IcarusActionSupport.buildIcarusBuilderCommand(builderArguments)
+        val command = IcarusActionSupport.buildIcarusBuilderCommand(project, builderArguments)
         val commandLine = IcarusActionSupport.toCommandLine(command)
 
         object : Task.Backgroundable(project, commandLine, false) {
